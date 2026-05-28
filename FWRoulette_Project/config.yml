@@ -1,0 +1,39 @@
+# ================================================================= #
+#             FWRoulette — Настройка Колеса Фортуны                 #
+# ================================================================= #
+
+# Заголовок меню, который увидят игроки
+menu-title: "&6&l⚡ &e&lКОЛЕСО ФОРТУНЫ &6&l⚡"
+
+# Команда для открытия меню в игре
+open-command: "spin"
+
+# Настройка наград (chance — это вес/шанс, commands — действия от консоли)
+prizes:
+  hunter:
+    material: IRON_SWORD
+    name: "&a&lПривилегия HUNTER"
+    chance: 40
+    commands:
+      - "lp user %player% parent set hunter"
+      - "broadcast &6[FW] &fИгрок &e%player% &fвыиграл ранг &a&lHUNTER &fв колесе фортуны!"
+  viper:
+    material: DIAMOND_SWORD
+    name: "&2&lПривилегия VIPER"
+    chance: 25
+    commands:
+      - "lp user %player% parent set viper"
+      - "broadcast &6[FW] &fИгрок &e%player% &fвыиграл ранг &2&lVIPER &fв колесе фортуны!"
+  slayer:
+    material: NETHERITE_SWORD
+    name: "&c&lПривилегия SLAYER"
+    chance: 10
+    commands:
+      - "lp user %player% parent set slayer"
+      - "broadcast &6[FW] &c&lОГО! &fИгрок &e%player% &fвыбил ранг &c&lSLAYER &fв колесе фортуны!"
+  money:
+    material: GOLD_INGOT
+    name: "&e&l15,000 Монет"
+    chance: 30
+    commands:
+      - "eco give %player% 15000"

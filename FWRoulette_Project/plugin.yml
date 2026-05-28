@@ -1,0 +1,8 @@
+name: FWRoulette
+version: 1.0
+main: ru.frostworld.roulette.Main
+api-version: 1.16
+commands:
+  spin:
+    description: Открыть круглое колесо фортуны
+    permission: fwroulette.use
