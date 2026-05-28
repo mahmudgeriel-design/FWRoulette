@@ -19,13 +19,15 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.*;
 
 public class Main extends JavaPlugin implements Listener, CommandExecutor {
+    private final Map<UUID, Integer> playerTickets = new HashMap<>();
     private final List<Prize> prizes = new ArrayList<>();
     private String menuTitle;
     private String openCmd;
     
-    // 12 слотов, которые выстроены в инвентаре 6х9 в форме идеального круглого колеса!
-    private final int[] wheelSlots = {19, 10, 3, 4, 5, 16, 25, 34, 40, 39, 28, 11};
+    // 12 слотов, образующих ИДЕАЛЬНОЕ геометрическое кольцо в инвентаре 6х9 (54 слота)!
+    private final int[] wheelSlots = {19, 10, 1, 2, 3, 12, 21, 30, 39, 38, 37, 28};
     private final Map<Integer, ItemStack> originalItems = new HashMap<>();
+    private final int buttonSlot = 22; // Кнопка запуска строго в центре колеса
 
     @Override
     public void onEnable() {
@@ -33,6 +35,7 @@ public class Main extends JavaPlugin implements Listener, CommandExecutor {
         loadConfigData();
         getServer().getPluginManager().registerEvents(this, this);
         getCommand(openCmd).setExecutor(this);
+        getCommand("giveroulettekey").setExecutor(this);
     }
 
     private void loadConfigData() {
@@ -56,21 +59,47 @@ public class Main extends JavaPlugin implements Listener, CommandExecutor {
             openGUI((Player) sender);
             return true;
         }
+        
+        if (cmd.getName().equalsIgnoreCase("giveroulettekey")) {
+            if (!sender.hasPermission("fwroulette.admin")) {
+                sender.sendMessage("§cУ вас нет прав!");
+                return true;
+            }
+            if (args.length < 2) {
+                sender.sendMessage("§cИспользуйте: /giveroulettekey [ник] [кол-во]");
+                return true;
+            }
+            Player target = Bukkit.getPlayer(args[0]);
+            if (target == null) {
+                sender.sendMessage("§cИгрок не найден!");
+                return true;
+            }
+            int amount = Integer.parseInt(args[1]);
+            playerTickets.put(target.getUniqueId(), playerTickets.getOrDefault(target.getUniqueId(), 0) + amount);
+            sender.sendMessage("§aВы выдали §e" + amount + " §aбилетов игроку §e" + target.getName());
+            target.sendMessage("§6[FW] §fВам выдано §e" + amount + " §fбилетов! Нажмите §a/spin §fчтобы покрутить.");
+            return true;
+        }
         return false;
     }
 
     private void openGUI(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, menuTitle);
+        int tickets = playerTickets.getOrDefault(p.getUniqueId(), 0);
         
-        // Заполняем абсолютно весь фон строгими чёрными стёклами поштучно
+        // Заполняем весь фон чёрным стеклом
         for (int i = 0; i < 54; i++) {
             inv.setItem(i, createItem(Material.BLACK_STAINED_GLASS_PANE, " "));
         }
         
-        // Ставим кнопку запуска в самый центр колеса (слот 22)
-        inv.setItem(22, createItem(Material.LIME_STAINED_GLASS_PANE, "§a§l[ КРУТИТЬ КОЛЕСО ]"));
+        // Кнопка запуска строго в центре геометрического круга (слот 22)
+        ItemStack start = createItem(Material.LIME_STAINED_GLASS_PANE, "§a§l[ КРУТИТЬ КОЛЕСО ]");
+        ItemMeta meta = start.getItemMeta();
+        meta.setLore(Arrays.asList("§7Стоимость: §e1 Билет", "§7Ваши билеты: §e" + tickets));
+        start.setItemMeta(meta);
+        inv.setItem(buttonSlot, start);
 
-        // Расставляем призы по кругу колеса
+        // Раскладываем призы по идеальному кругу
         for (int slot : wheelSlots) {
             inv.setItem(slot, getRandomPrize().toItemStack());
         }
@@ -81,9 +110,25 @@ public class Main extends JavaPlugin implements Listener, CommandExecutor {
     public void onClick(InventoryClickEvent e) {
         if (e.getView().getTitle().equals(menuTitle)) {
             e.setCancelled(true);
-            if (e.getRawSlot() == 22 && e.getCurrentItem() != null && e.getCurrentItem().getType() == Material.LIME_STAINED_GLASS_PANE) {
-                e.getInventory().setItem(22, createItem(Material.RED_STAINED_GLASS_PANE, "§c§lКОЛЕСО КРУТИТСЯ..."));
-                startWheelRoll((Player) e.getWhoClicked(), e.getInventory());
+            Player p = (Player) e.getWhoClicked();
+            
+            if (e.getRawSlot() == buttonSlot && e.getCurrentItem() != null && e.getCurrentItem().getType() == Material.LIME_STAINED_GLASS_PANE) {
+                int tickets = playerTickets.getOrDefault(p.getUniqueId(), 0);
+                
+                // ЖЁСТКАЯ ПРОВЕРКА НА КЛЮЧИ! Без них крутить нельзя!
+                if (tickets <= 0) {
+                    p.sendMessage("§6[FW] §cУ вас нет билетов для прокрутки колеса!");
+                    p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                    p.closeInventory();
+                    return;
+                }
+                
+                // Списываем 1 билет
+                playerTickets.put(p.getUniqueId(), tickets - 1);
+                
+                // Меняем кнопку на статус кручения
+                e.getInventory().setItem(buttonSlot, createItem(Material.RED_STAINED_GLASS_PANE, "§c§lКОЛЕСО КРУТИТСЯ..."));
+                startWheelRoll(p, e.getInventory());
             }
         }
     }
@@ -97,7 +142,7 @@ public class Main extends JavaPlugin implements Listener, CommandExecutor {
         new BukkitRunnable() {
             int ticks = 0;
             int delay = 1;
-            int maxTicks = 55; 
+            int maxTicks = 60; 
             int currentIndex = 0;
 
             @Override
@@ -106,8 +151,8 @@ public class Main extends JavaPlugin implements Listener, CommandExecutor {
                 ticks++;
                 
                 if (ticks > 25) delay = 2;
-                if (ticks > 40) delay = 4;
-                if (ticks > 48) delay = 8;
+                if (ticks > 45) delay = 4;
+                if (ticks > 52) delay = 8;
 
                 if (ticks % delay == 0) {
                     int prevSlot = wheelSlots[currentIndex];
