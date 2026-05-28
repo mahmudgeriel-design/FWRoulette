@@ -15,7 +15,6 @@
     </properties>
 
     <dependencies>
-        <!-- Подключаем наше локальное ядро, сборка пойдет напрямую из него! -->
         <dependency>
             <groupId>local.server</groupId>
             <artifactId>paper</artifactId>
@@ -26,9 +25,11 @@
     </dependencies>
 
     <build>
+        <!-- УКАЗАЛИ ТОЧНЫЙ ПУТЬ К ТВОЕЙ ПАПКЕ С КОДОМ, ЧТОБЫ ОН СКОМПИЛИРОВАЛСЯ -->
+        <sourceDirectory>FWRoulette_Project/src</sourceDirectory>
         <resources>
             <resource>
-                <directory>.</directory>
+                <directory>${project.basedir}</directory>
                 <includes>
                     <include>plugin.yml</include>
                     <include>config.yml</include>
